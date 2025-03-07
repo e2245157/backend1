@@ -3,11 +3,12 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require('bcrypt');
 const mysql = require('mysql2/promise');
-const jwt = require('jsonwebtoken'); // Added for JWT
+const jwt = require('jsonwebtoken');
 const { calculateCarbonFootprint } = require("./services/climatiqService");
 const morgan = require('morgan');
+const carbonRouter = require('./routes/carbon'); // Add this
 
-const app = express(); // Define app here
+const app = express();
 
 // Check for required environment variables
 const requiredEnvVars = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET'];
@@ -37,13 +38,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(morgan('combined'));
+app.use('/api/carbon', carbonRouter); // Mount the carbon router
 
 // Sample Route
 app.get("/", (req, res) => {
   res.send("Backend is running!");
 });
 
-// Route to Calculate Carbon Footprint
+// Route to Calculate Carbon Footprint (old, can remove later)
 app.post("/carbon-footprint", async (req, res) => {
   console.log("POST /carbon-footprint route hit");
   try {
@@ -117,7 +119,6 @@ app.post('/api/auth/login', async (req, res) => {
         message: 'Email and password are required'
       });
     }
-
     console.log('Querying user with email:', email);
     const [users] = await pool.query(
       'SELECT * FROM users WHERE email = ?',
@@ -130,7 +131,6 @@ app.post('/api/auth/login', async (req, res) => {
         message: 'Invalid email or password'
       });
     }
-
     const user = users[0];
     console.log('Verifying password for user:', user.email);
     const isMatch = await bcrypt.compare(password, user.password_hash);
@@ -141,7 +141,6 @@ app.post('/api/auth/login', async (req, res) => {
         message: 'Invalid email or password'
       });
     }
-
     console.log('Generating JWT for user:', user.user_id);
     const token = jwt.sign(
       { id: user.user_id, email: user.email },
@@ -149,14 +148,12 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '1h' }
     );
     console.log('JWT generated:', token);
-
     console.log('Updating last_login for user:', user.user_id);
     await pool.query(
       'UPDATE users SET last_login = NOW() WHERE user_id = ?',
       [user.user_id]
     );
     console.log('Last login updated');
-
     res.status(200).json({
       success: true,
       message: 'Login successful',
